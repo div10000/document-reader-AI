@@ -29,6 +29,9 @@ with st.sidebar:
 
 # Process the file if uploaded
 if uploaded_file is not None:
+    # --- NEW: Automatically create the folder if it doesn't exist ---
+    os.makedirs("temp_uploads", exist_ok=True)
+    
     # Save the uploaded file temporarily
     file_path = os.path.join("temp_uploads", uploaded_file.name)
     with open(file_path, "wb") as f:
@@ -81,7 +84,7 @@ if user_question := st.chat_input("Ask a question about your document..."):
                     recent_history
                 )
                 
-                full_response = f"{answer}\n\n*(Sources: Pages {', '.join(map(str, sources))})*"
+                full_response = f"{answer}\n\n*(Scanned Pages: {', '.join(map(str, sources))})*"
                 st.markdown(full_response)
                 
         # 4. Save assistant response to history

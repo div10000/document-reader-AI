@@ -1,4 +1,6 @@
 import fitz  # PyMuPDF
+import re # regular expressions for text cleaning
+import unicodedata # for text normalization
 import docx
 import pandas as pd
 import os
@@ -65,8 +67,21 @@ def extract_pages(file_path):
     return pages
 
 def tokenize(text):
-    """Splits text into words for the BM25 algorithm."""
-    return text.lower().split()
+    """Cleans punctuation and splits text into words."""
+    # 1. Convert to lowercase
+    text = text.lower()
+    
+    # 2. Remove accents and special marks ---
+    
+    # This separates the base letter from the accent mark, and then throws away all the extra marks.
+    text = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
+    
+    #  Remove all punctuation (Keep only letters, numbers, and spaces)
+    # The regex [^\w\s] means "anything that is NOT an alphanumeric character or space"
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # 3. Split into individual words
+    return text.split()
 
 def build_bm25_index(pages):
     """Creates the BM25 search index from the pages."""
@@ -77,8 +92,8 @@ def get_answer(user_question, bm25_index, pages, llm, chat_history):
     """Searches for relevant pages and asks Groq, while remembering the past 4 messages."""
     tokenized_query = tokenize(user_question)
     
-    # Grab the top 3 most relevant pages based on the NEW question
-    best_pages = bm25_index.get_top_n(tokenized_query, pages, n=3)
+    # Grab the top n most relevant pages based on the NEW question
+    best_pages = bm25_index.get_top_n(tokenized_query, pages, n=6)
     
     # Build the document context string
     context = ""
@@ -94,9 +109,11 @@ def get_answer(user_question, bm25_index, pages, llm, chat_history):
     # --- NEW: Updated Prompt with Memory ---
     prompt = f"""You are a helpful assistant analyzing a document.
 Based ONLY on the Document Context below, answer the user's question.
+Always mention the page numbers of the document where you found the answer and also mention if any page number  is mentioned in footer of the page. (Both the page number mentioned in footer and the page number given by the document reader should be mentioned. If they are same, mention only one page number. If they are different, mention both page numbers with a note about the discrepancy.)
+If you don't know, say you don't know. Do NOT make up answers.
 You also have access to the Chat History to understand what the user is referring to (like "it", "they", or "that").
 
-Chat History (Last 4 messages):
+Chat History (Last few messages):
 {history_text}
 
 Document Context:
