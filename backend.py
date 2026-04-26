@@ -93,7 +93,7 @@ def get_answer(user_question, bm25_index, pages, llm, chat_history):
     tokenized_query = tokenize(user_question)
     
     # Grab the top n most relevant pages based on the NEW question
-    best_pages = bm25_index.get_top_n(tokenized_query, pages, n=6)
+    best_pages = bm25_index.get_top_n(tokenized_query, pages, n=8)
     
     # Build the document context string
     context = ""
@@ -109,9 +109,10 @@ def get_answer(user_question, bm25_index, pages, llm, chat_history):
     # --- NEW: Updated Prompt with Memory ---
     prompt = f"""You are a helpful assistant analyzing a document.
 Based ONLY on the Document Context below, answer the user's question.
-Always mention the page numbers of the document where you found the answer and also mention if any page number  is mentioned in footer of the page. (Both the page number mentioned in footer and the page number given by the document reader should be mentioned. If they are same, mention only one page number. If they are different, mention both page numbers with a note about the discrepancy.)
+Always mention the page numbers of the document where you found the answer.
 If you don't know, say you don't know. Do NOT make up answers.
 You also have access to the Chat History to understand what the user is referring to (like "it", "they", or "that").
+If a question is aksed from context of previous response, do not read things from the provided "Document Context". Instead, try to answer from provided "Chat History".
 
 Chat History (Last few messages):
 {history_text}
